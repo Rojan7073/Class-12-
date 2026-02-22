@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Records — Sales & Purchase Manager</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <link rel="stylesheet" href="records.css"/>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<nav>
+  <a class="nav-brand" href="sales.html">
+    <div class="nav-logo">CS</div>
+    <div class="nav-brand-text">
+      123 Convenience Store
+      <small>Sales &amp; Purchase</small>
+    </div>
+  </a>
+  <a class="nav-link"        href="sales.html">Sales</a>
+  <a class="nav-link"        href="purchase.html">Purchase</a>
+  <a class="nav-link active" href="records.html">Records</a>
+</nav>
+
+<!-- PAGE -->
+<div class="page">
+  <div class="page-title">
+    <h1>View <span>Records</span></h1>
+  </div>
+
+  <!-- Filter Card -->
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="filter-row">
+      <div class="field">
+        <label>From Date</label>
+        <input type="date" id="from_date"/>
+      </div>
+      <div class="field">
+        <label>To Date</label>
+        <input type="date" id="to_date"/>
+      </div>
+      <button class="btn-search" onclick="fetchRecords()">Search</button>
+    </div>
+  </div>
+
+  <!-- Summary chips -->
+  <div class="summary-bar" id="summaryBar" style="display:none;">
+    <div class="summary-chip chip-sale">
+      Sales: <b id="saleCount">0</b> &nbsp;|&nbsp; Rs. <b id="saleTotal">0.00</b>
+    </div>
+    <div class="summary-chip chip-purchase">
+      Purchases: <b id="purchaseCount">0</b> &nbsp;|&nbsp; Rs. <b id="purchaseTotal">0.00</b>
+    </div>
+    <div class="summary-chip chip-total">
+      Grand Total: Rs. <b id="grandTotal">0.00</b>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-header-bar">
+      <span>Results</span>
+      <span class="rec-badge" id="recCount">0 records</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>S.N</th>
+          <th>Type</th>
+          <th>Date</th>
+          <th>Customer / Vendor</th>
+          <th>Product</th>
+          <th>Units</th>
+          <th>Total Price</th>
+        </tr>
+      </thead>
+      <tbody id="recordsBody">
+        <tr>
+          <td colspan="7" class="empty-state">
+            <span class="icon">📋</span>
+            Choose a date range above and click Search
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /page -->
+
+<div id="toast"></div>
+
+<script>
+  // Toast helper
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = 'show toast-' + type;
+    setTimeout(() => t.className = '', 3200);
+  }
+
+  // Fetch records
+  async function fetchRecords() {
+    const from = document.getElementById('from_date').value;
+    const to   = document.getElementById('to_date').value;
+
+    if (!from || !to) {
+      showToast('Please select both From Date and To Date', 'error');
+      return;
+    }
+
+    if (from > to) {
+      showToast('From Date cannot be after To Date', 'error');
+      return;
+    }
+
+    const tbody = document.getElementById('recordsBody');
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading...</td></tr>';
+    document.getElementById('summaryBar').style.display = 'none';
+
+    try {
+      // Same style as sales.html and purchase.html - just filename, no full URL
+      const res  = await fetch('get_records.php?from=' + from + '&to=' + to);
+      const json = await res.json();
+
+      if (!json.success) {
+        showToast('Error: ' + json.message, 'error');
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Error loading records.</td></tr>';
+        return;
+      }
+
+      const rows = json.data;
+      document.getElementById('recCount').textContent = rows.length + ' record' + (rows.length !== 1 ? 's' : '');
+
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><span class="icon">🔍</span>No records found for this date range.</td></tr>';
+        return;
+      }
+
+      // Build table rows
+      let html = '';
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const badgeClass = r.type === 'sale' ? 'badge-sale' : 'badge-purchase';
+        html += '<tr>';
+        html += '<td>' + (i + 1) + '</td>';
+        html += '<td><span class="type-badge ' + badgeClass + '">' + r.type + '</span></td>';
+        html += '<td>' + r.date + '</td>';
+        html += '<td>' + (r.customer_vendor || '—') + '</td>';
+        html += '<td>' + r.product_name + '</td>';
+        html += '<td>' + r.units + '</td>';
+        html += '<td>Rs. ' + parseFloat(r.total_price).toFixed(2) + '</td>';
+        html += '</tr>';
+      }
+      tbody.innerHTML = html;
+
+      // Summary calculations
+      let saleSum   = 0;
+      let purSum    = 0;
+      let saleCount = 0;
+      let purCount  = 0;
+
+      for (let j = 0; j < rows.length; j++) {
+        if (rows[j].type === 'sale') {
+          saleSum += parseFloat(rows[j].total_price);
+          saleCount++;
+        } else {
+          purSum += parseFloat(rows[j].total_price);
+          purCount++;
+        }
+      }
+
+      document.getElementById('saleCount').textContent     = saleCount;
+      document.getElementById('saleTotal').textContent     = saleSum.toFixed(2);
+      document.getElementById('purchaseCount').textContent = purCount;
+      document.getElementById('purchaseTotal').textContent = purSum.toFixed(2);
+      document.getElementById('grandTotal').textContent    = (saleSum + purSum).toFixed(2);
+      document.getElementById('summaryBar').style.display  = 'flex';
+
+    } catch (err) {
+      showToast('Cannot connect to server. Is XAMPP running?', 'error');
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Cannot connect to server.</td></tr>';
+    }
+  }
+</script>
+</body>
+</html>

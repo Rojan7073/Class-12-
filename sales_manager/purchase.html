@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Purchase — Sales & Purchase Manager</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <link rel="stylesheet" href="purchase.css"/>
+</head>
+<body>
+
+<!--NAVIGATION-->
+<nav>
+  <a class="nav-brand" href="sales.html">
+    <div class="nav-logo">CS</div>
+    <div class="nav-brand-text">
+     123 Convenience Store 
+      <small>Sales &amp; Purchase</small>
+    </div>
+  </a>
+  <a class="nav-link"        href="sales.html">Sales</a>
+  <a class="nav-link active" href="purchase.html">Purchase</a>
+  <a class="nav-link"        href="records.html">Records</a>
+</nav>
+
+<!--PAGE-->
+<div class="page">
+  <div class="page-title">
+    <h1>New <span>Purchase</span></h1>
+  </div>
+
+  <div class="card">
+    <form id="purchaseForm">
+      <div class="form-grid">
+
+        <div class="field">
+          <label>Vendor Name</label>
+          <input type="text" name="vendor_name" placeholder="Nepal Traders" required/>
+        </div>
+
+        <div class="field">
+          <label>Product Name</label>
+          <input type="text" name="product_name" placeholder="Chocolate" required/>
+        </div>
+
+        <div class="field">
+          <label>Per Unit Price Rs.</label>
+          <input type="number" name="per_unit_price" id="p_unit" placeholder="0.00" step="0.01" min="0" required/>
+        </div>
+
+        <div class="field">
+          <label>Purchased Units</label>
+          <input type="number" name="purchased_units" id="p_qty" placeholder="0" min="1" step="1" required/>
+        </div>
+
+
+
+        <div class="field full">
+          <label>Total Price (auto-calculated) Rs.</label>
+          <input type="number" name="total_price" id="p_total" placeholder="0.00" readonly/>
+        </div>
+
+        <div class="field full">
+          <label>Purchase Date</label>
+          <input type="date" name="purchase_date" required/>
+        </div>
+
+      </div><!-- /form-grid -->
+
+      <button type="submit" class="btn btn-primary btn-full">
+        ✓ Submit Purchase
+      </button>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+<!-- JAVASCRIPt -->
+<script>
+
+  const unitInput  = document.getElementById('p_unit');
+  const qtyInput   = document.getElementById('p_qty');
+  const totalInput = document.getElementById('p_total');
+
+  function calcTotal() {
+    const unit = parseFloat(unitInput.value) || 0;
+    const qty  = parseFloat(qtyInput.value)  || 0;
+    totalInput.value = (unit * qty).toFixed(2);
+  }
+  unitInput.addEventListener('input', calcTotal);
+  qtyInput.addEventListener('input', calcTotal);
+
+  
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = 'show toast-' + type;
+    setTimeout(() => t.className = '', 3200);
+  }
+
+ 
+  document.getElementById('purchaseForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const data = new FormData(this);
+    data.append('type', 'purchase');
+    try {
+      const res  = await fetch('save_record.php', { method: 'POST', body: data });
+      const json = await res.json();
+      if (json.success) {
+        showToast('✓ Purchase saved successfully!', 'success');
+        this.reset();
+        totalInput.value = '';
+      } else {
+        showToast('✗ Error: ' + json.message, 'error');
+      }
+    } catch (err) {
+      showToast('✗ Cannot connect to server. Is XAMPP running?', 'error');
+    }
+  });
+</script>
+</body>
+</html>

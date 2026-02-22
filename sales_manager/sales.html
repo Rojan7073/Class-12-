@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sales Manager</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <link rel="stylesheet" href="sale.css"/>
+</head>
+<body>
+
+<!--NAVIGATION-->
+<nav>
+  <a class="nav-brand" href="sales.html">
+    <div class="nav-logo">CS</div>
+    <div class="nav-brand-text">
+     123 Convenience Store 
+      <small>Sales &amp; Purchase</small>
+    </div>
+  </a>
+  <a class="nav-link active" href="sales.html">Sales</a>
+  <a class="nav-link"        href="purchase.html">Purchase</a>
+  <a class="nav-link"        href="records.html">Records</a>
+</nav>
+
+<!--PAGE-->
+<div class="page">
+  <div class="page-title">
+    <h1>New <span>Sales</span></h1>
+  </div>
+
+  <div class="card">
+    <form id="salesForm">
+      <div class="form-grid">
+
+        <div class="field">
+          <label>Customer Name</label>
+          <input type="text" name="customer_name" placeholder="Rojan Subedi" required/>
+        </div>
+
+        <div class="field">
+          <label>Product Name</label>
+          <input type="text" name="product_name" placeholder="Sugar" required/>
+        </div>
+
+        <div class="field">
+          <label>Quantity (Units Sold)</label>
+          <input type="number" name="quantity" id="s_qty" placeholder="0" min="1" step="1" required/>
+        </div>
+
+        <div class="field">
+          <label>Cost Price (per unit) Rs.</label>
+          <input type="number" name="cost" placeholder="0.00" step="0.01" min="0" required/>
+        </div>
+
+        <div class="field">
+          <label>Selling Price (per unit) Rs.</label>
+          <input type="number" name="selling_price" id="s_price_per" placeholder="0.00" step="0.01" min="0" required/>
+        </div>
+
+        <div class="field">
+          <label>Total Price (auto-calculated) Rs.</label>
+          <input type="number" name="total_price" id="s_total" placeholder="0.00" readonly/>
+        </div>
+
+        <div class="field full">
+          <label>Selling Date</label>
+          <input type="date" name="sale_date" required/>
+        </div>
+
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">
+        ✓ Submit Sales
+      </button>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  //Auto-calculate total
+  const qtyInput   = document.getElementById('s_qty');
+  const priceInput = document.getElementById('s_price_per');
+  const totalInput = document.getElementById('s_total');
+
+  function calcTotal() {
+    const qty   = parseFloat(qtyInput.value)   || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    totalInput.value = (qty * price).toFixed(2);
+  }
+  qtyInput.addEventListener('input', calcTotal);
+  priceInput.addEventListener('input', calcTotal);
+
+  // Toast helper
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = 'show toast-' + type;
+    setTimeout(() => t.className = '', 3200);
+  }
+
+  // ── Form submit
+  document.getElementById('salesForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const data = new FormData(this);
+    data.append('type', 'sale');
+    try {
+      const res  = await fetch('save_record.php', { method: 'POST', body: data });
+      const json = await res.json();
+      if (json.success) {
+        showToast('✓ Sale saved successfully!', 'success');
+        this.reset();
+        totalInput.value = '';
+      } else {
+        showToast('✗ Error: ' + json.message, 'error');
+      }
+    } catch (err) {
+      showToast('✗ Cannot connect to server. Is XAMPP running?', 'error');
+    }
+  });
+</script>
+</body>
+</html>
